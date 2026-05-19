@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 use clashctl::mod_use;
 
 pub use clashctl;

@@ -1,7 +1,3 @@
-#![feature(int_abs_diff)]
-#![feature(thread_is_running)]
-#![feature(generic_associated_types)]
-
 use clashctl_interactive::clashctl::{self, mod_use, model};
 
 pub mod components;
