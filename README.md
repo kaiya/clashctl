@@ -187,24 +187,17 @@ Add an optional dependency, requires [`cargo-edit`](https://github.com/killercup
 
 ### Project structure
 
+`clashctl` is a Cargo workspace of six crates:
+
 ```bash
-$ tree src -L 2
-src
-├── api.rs            # Clash API, with struct `Clash`, export by default
-├── bin               # Binary dir
-│   ├── cli.rs        # Cli only
-│   ├── cli_ui.rs     # Both cli and ui
-│   └── ui.rs         # Ui only
-├── cli               # Feature `cli`, depends on clap
-│   └── ...
-├── error.rs          # Error
-├── interactive       # Feature `interactive`, shared code of `cli` and `ui`
-│   └── ...
-├── lib.rs            # Lib entrance
-├── model             # Models, export by default
-│   └── ...
-├── test              # Test codes
-│   └── ...
-└── ui                # Feature `ui`
-    └── ...
+$ tree -L 1 -d
+.
+├── clashctl                 # Core lib: Clash REST API client + models
+├── clashctl-cli             # `cli` subcommands (clap-based)
+├── clashctl-interactive     # Shared config / flags / sort, used by both cli & tui
+├── clashctl-tui             # Terminal UI built on tui-rs + crossterm
+├── clashctl-bin             # `clashctl` binary; dispatches to tui or cli
+└── clashctl-workspace-hack  # Hakari-generated workspace-hack crate
 ```
+
+Dependency direction: `clashctl-bin` → {`clashctl-tui`, `clashctl-cli`, `clashctl-interactive`}; `clashctl-tui` and `clashctl-cli` both depend on `clashctl-interactive`; `clashctl-interactive` depends on `clashctl` (the lib).
