@@ -12,6 +12,14 @@ mod_use![command, proxy_render, utils, error];
 pub fn run() {
     let opts = Opts::parse();
 
+    #[cfg(feature = "tui")]
+    if let Cmd::Tui(opt) = opts.cmd {
+        if let Err(e) = clashctl_tui::main_loop(opt, opts.flag) {
+            eprintln!("{:?}", e);
+        }
+        return;
+    }
+
     init_logger(match opts.flag.verbose {
         0 => Some(LevelFilter::Info),
         1 => Some(LevelFilter::Debug),
@@ -21,12 +29,14 @@ pub fn run() {
 
     debug!("Opts: {:#?}", opts);
 
-    if let Err(e) = match opts.cmd {
+    let res = match opts.cmd {
+        #[cfg(feature = "tui")]
+        Cmd::Tui(_) => unreachable!(),
         Cmd::Proxy(sub) => sub.handle(&opts.flag),
         Cmd::Server(sub) => sub.handle(&opts.flag),
         Cmd::Completion(arg) => arg.handle(),
-        _ => unreachable!(),
-    } {
+    };
+    if let Err(e) = res {
         eprintln!("{:?}", e)
     }
 }
