@@ -90,6 +90,17 @@ where
             self.offset.y += 1;
         }
     }
+
+    pub fn drain_front(&mut self, num: usize) {
+        let n = num.min(self.items.len());
+        self.items.drain(..n);
+        // offset.y is measured from the bottom; the bottom item is unchanged,
+        // so only clamp when the user's view fell inside the drained range.
+        let max_y = self.items.len().saturating_sub(1);
+        if self.offset.y > max_y {
+            self.offset.y = max_y;
+        }
+    }
 }
 
 // TODO: Use lazy updated footer
@@ -251,6 +262,65 @@ where
 
     fn offset(&self) -> &Coord {
         &self.offset
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tui::text::Spans;
+
+    use super::*;
+    use clashctl_interactive::Noop;
+
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct N(usize);
+
+    impl<'a> MovableListItem<'a> for N {
+        fn to_spans(&self) -> Spans<'a> {
+            Spans::default()
+        }
+    }
+
+    fn filled(n: usize) -> MovableListState<'static, N, Noop> {
+        let mut s = MovableListState::<N, Noop>::default();
+        s.items = (0..n).map(N).collect();
+        s
+    }
+
+    #[test]
+    fn drain_front_removes_from_head() {
+        let mut s = filled(300);
+        s.drain_front(100);
+        assert_eq!(s.items.len(), 200);
+        assert_eq!(s.items[0], N(100));
+        assert_eq!(s.items[199], N(299));
+    }
+
+    #[test]
+    fn drain_front_preserves_held_view_when_inside_remaining_range() {
+        let mut s = filled(300);
+        s.offset.hold = true;
+        s.offset.y = 5;
+        s.drain_front(100);
+        assert_eq!(s.offset.y, 5);
+        assert_eq!(s.items[s.items.len() - 1 - s.offset.y], N(294));
+    }
+
+    #[test]
+    fn drain_front_clamps_view_when_inside_drained_range() {
+        let mut s = filled(300);
+        s.offset.hold = true;
+        s.offset.y = 250;
+        s.drain_front(100);
+        assert_eq!(s.offset.y, s.items.len() - 1);
+    }
+
+    #[test]
+    fn drain_front_saturates_when_num_exceeds_len() {
+        let mut s = filled(50);
+        s.drain_front(100);
+        assert!(s.items.is_empty());
+        assert_eq!(s.offset.y, 0);
     }
 }
 

@@ -41,7 +41,6 @@ pub struct TuiStates<'a> {
     pub debug_state: DebugListState<'a>,
 }
 
-// TODO fix: drop_events not working
 impl<'a> TuiStates<'a> {
     pub const TITLES: &'static [&'static str] = &[
         "Status", "Proxies", "Rules", "Conns", "Logs", "Configs", "Debug",
@@ -50,7 +49,7 @@ impl<'a> TuiStates<'a> {
     pub fn handle(&mut self, event: Event) -> Result<Option<Action>> {
         self.all_events_recv += 1;
         if self.debug_state.len() >= 300 {
-            let _ = self.drop_events(100);
+            self.debug_state.drain_front(100);
         }
         self.debug_state.push(event.to_owned());
 
@@ -184,8 +183,27 @@ impl<'a> TuiStates<'a> {
     pub const fn debug_page_index(&self) -> u8 {
         Self::TITLES.len() as u8 - 1
     }
+}
 
-    fn drop_events(&mut self, num: usize) -> impl Iterator<Item = Event> + '_ {
-        self.debug_state.drain(..num)
+#[cfg(test)]
+mod tests {
+    use log::Level;
+
+    use super::*;
+    use crate::event::DiagnosticEvent;
+
+    fn dummy_event(i: usize) -> Event {
+        Event::Diagnostic(DiagnosticEvent::Log(Level::Info, format!("msg-{i}")))
+    }
+
+    #[test]
+    fn debug_state_stays_bounded_under_event_flood() {
+        let mut state = TuiStates::default();
+        for i in 0..500 {
+            state.handle(dummy_event(i)).unwrap();
+        }
+        assert!(state.debug_state.len() <= 300);
+        let head = format!("{:?}", state.debug_state[0]);
+        assert!(!head.contains("msg-0"));
     }
 }
